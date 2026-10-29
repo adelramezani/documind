@@ -1,0 +1,1 @@
+"""Documind backend application package."""

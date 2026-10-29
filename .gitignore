@@ -218,3 +218,8 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Documind
+data/
+frontend/node_modules/
+frontend/dist/
