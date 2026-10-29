@@ -66,6 +66,12 @@ A local-first RAG application, Private, locally hosted AI knowledge assistant th
   `deploy_mode: offline` (default) consumes `deploy/stage.sh`'s bundle
   (dist.tar.gz, manylinux cp311 wheels, ollama tgz, models/) from
   `~/documind-stage`; `group_vars` must sit inside `inventory/` to load.
+  Offline gotchas: run stage.sh via `sh` (bash->WSL shim); $HOME is a
+  network drive — models live under %USERPROFILE%; uvloop is unix-only
+  so stage.sh fetches it outside the lock; ollama releases are .tar.zst
+  (recompressed to .tgz by stage.sh); server no_proxy uses CIDR which
+  curl can't parse — playbook overrides with plain 127.0.0.1.
+  Deployed & verified working on 2026-10-29 (app on :8000).
   Do NOT use `get_url`/`uri` for egress — Python urllib can't do NTLM
   proxy auth and sends %40 credentials literally (407s); use
   `command: curl --proxy-anyauth` instead. The ollama *daemon* pulls

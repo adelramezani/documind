@@ -44,11 +44,12 @@
     - git_checkout.changed or not frontend_dist.stat.exists
   notify: Restart documind
 
+# dist.tar.gz contains a top-level dist/ — extract into frontend/, not dist/.
 - name: Install the prebuilt frontend (offline)
   ansible.builtin.unarchive:
     src: "{{ stage_dir }}/dist.tar.gz"
     remote_src: true
-    dest: "{{ app_dir }}/app/frontend/dist"
+    dest: "{{ app_dir }}/app/frontend"
   when: deploy_mode == 'offline'
   notify: Restart documind
 

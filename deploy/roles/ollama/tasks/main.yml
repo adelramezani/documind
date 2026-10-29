@@ -16,6 +16,12 @@
     dest: "{{ user_local }}"
     creates: "{{ user_local }}/bin/ollama"
 
+- name: Create the user systemd directory
+  ansible.builtin.file:
+    path: "{{ ansible_env.HOME }}/.config/systemd/user"
+    state: directory
+    mode: "0755"
+
 - name: Install the Ollama user service
   ansible.builtin.template:
     src: ollama.service.j2
