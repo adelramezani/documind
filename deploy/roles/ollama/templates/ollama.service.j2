@@ -10,7 +10,9 @@ Environment=http_proxy={{ proxy_url }}
 Environment=https_proxy={{ proxy_url }}
 Environment=no_proxy=localhost,127.0.0.1
 {% endif -%}
-ExecStart={{ user_local }}/bin/ollama serve
+# systemd 239 has no StandardOutput=file:/append: — redirect via sh -c.
+# Logs: {{ user_local }}/share/ollama/ollama.log
+ExecStart=/bin/sh -c 'exec {{ user_local }}/bin/ollama serve >> {{ user_local }}/share/ollama/ollama.log 2>&1'
 Restart=on-failure
 RestartSec=3
 

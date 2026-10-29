@@ -7,7 +7,9 @@ Wants=ollama.service
 Type=simple
 WorkingDirectory={{ app_dir }}/app
 EnvironmentFile={{ app_dir }}/documind.env
-ExecStart={{ app_dir }}/venv/bin/uvicorn app.main:app --app-dir backend --host {{ app_host }} --port {{ app_port }}
+# systemd 239 has no StandardOutput=file:/append: — redirect via sh -c.
+# Logs: {{ app_dir }}/documind.log
+ExecStart=/bin/sh -c 'exec {{ app_dir }}/venv/bin/uvicorn app.main:app --app-dir backend --host {{ app_host }} --port {{ app_port }} >> {{ app_dir }}/documind.log 2>&1'
 Restart=on-failure
 RestartSec=3
 
