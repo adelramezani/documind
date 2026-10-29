@@ -61,6 +61,11 @@ A local-first RAG application, Private, locally hosted AI knowledge assistant th
   `PROXY`; the server's env vars are malformed
   (@ in username must be %40-encoded, else curl parses port 0).
   Playbook reads proxy from `ansible_env.https_proxy` (var `proxy_url`).
+  The proxy whitelists github.com/codeload/githubusercontent only —
+  nodejs.org, npm registry, pypi, ollama.com, conda are all denied.
+  `deploy_mode: offline` (default) consumes `deploy/stage.sh`'s bundle
+  (dist.tar.gz, manylinux cp311 wheels, ollama tgz, models/) from
+  `~/documind-stage`; `group_vars` must sit inside `inventory/` to load.
   Do NOT use `get_url`/`uri` for egress — Python urllib can't do NTLM
   proxy auth and sends %40 credentials literally (407s); use
   `command: curl --proxy-anyauth` instead. The ollama *daemon* pulls

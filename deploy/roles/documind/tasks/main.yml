@@ -23,28 +23,43 @@
     path: "{{ app_dir }}/app/frontend/dist/index.html"
   register: frontend_dist
 
-- name: Install frontend dependencies
+- name: Install frontend dependencies (online)
   ansible.builtin.command:
     cmd: npm ci
     chdir: "{{ app_dir }}/app/frontend"
   environment:
     PATH: "{{ user_local }}/node/bin:{{ ansible_env.PATH }}"
-  when: git_checkout.changed or not frontend_dist.stat.exists
+  when:
+    - deploy_mode == 'online'
+    - git_checkout.changed or not frontend_dist.stat.exists
 
-- name: Build the frontend
+- name: Build the frontend (online)
   ansible.builtin.command:
     cmd: npm run build
     chdir: "{{ app_dir }}/app/frontend"
   environment:
     PATH: "{{ user_local }}/node/bin:{{ ansible_env.PATH }}"
-  when: git_checkout.changed or not frontend_dist.stat.exists
+  when:
+    - deploy_mode == 'online'
+    - git_checkout.changed or not frontend_dist.stat.exists
+  notify: Restart documind
+
+- name: Install the prebuilt frontend (offline)
+  ansible.builtin.unarchive:
+    src: "{{ stage_dir }}/dist.tar.gz"
+    remote_src: true
+    dest: "{{ app_dir }}/app/frontend/dist"
+  when: deploy_mode == 'offline'
   notify: Restart documind
 
 - name: Create the Python virtualenv and install locked requirements
+  # Offline: wheels were fetched for manylinux/cp311 by deploy/stage.sh.
   ansible.builtin.pip:
     requirements: "{{ app_dir }}/app/backend/requirements.lock"
     virtualenv: "{{ app_dir }}/venv"
     virtualenv_command: "{{ python_bin }} -m venv"
+    extra_args: "{{ '--no-index --find-links=' + stage_dir + '/wheels'
+                  if deploy_mode == 'offline' else omit }}"
   notify: Restart documind
 
 - name: Write the environment file

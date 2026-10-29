@@ -1,14 +1,17 @@
 # curl, not get_url — see nodejs role; urllib can't auth to the NTLM proxy.
-- name: Download the Ollama archive
+- name: Download the Ollama archive (online)
   ansible.builtin.command:
     cmd: >-
       curl -fsSL --proxy-anyauth --retry 3 --retry-all-errors --max-time 600
       -o /tmp/ollama-linux-amd64.tgz
       https://ollama.com/download/ollama-linux-amd64.tgz
+  when: deploy_mode == 'online'
 
 - name: Install Ollama into ~/.local (bin/ollama, lib/ollama)
   ansible.builtin.unarchive:
-    src: /tmp/ollama-linux-amd64.tgz
+    src: >-
+      {{ '/tmp/ollama-linux-amd64.tgz' if deploy_mode == 'online'
+         else stage_dir + '/ollama-linux-amd64.tgz' }}
     remote_src: true
     dest: "{{ user_local }}"
     creates: "{{ user_local }}/bin/ollama"
@@ -34,7 +37,13 @@
     port: 11434
     timeout: 30
 
-- name: Pull required models
+- name: Install staged models (offline)
+  ansible.builtin.copy:
+    src: "{{ stage_dir }}/models/"
+    dest: "{{ ollama_models_dir }}/"
+  when: deploy_mode == 'offline'
+
+- name: Pull required models (online)
   ansible.builtin.command: "{{ user_local }}/bin/ollama pull {{ item }}"
   loop: "{{ ollama_models }}"
   environment:
@@ -42,3 +51,4 @@
     OLLAMA_MODELS: "{{ ollama_models_dir }}"
   register: ollama_pull
   changed_when: "'success' in ollama_pull.stdout"
+  when: deploy_mode == 'online'

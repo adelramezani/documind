@@ -32,14 +32,14 @@
           {{ 'git ' if git_check.rc != 0 }}{{ 'python3.11+ with ensurepip' if python_check.rc != 0 }}
       when: git_check.rc != 0 or python_check.rc != 0
 
-    - name: Verify egress through the proxy
+    - name: Verify egress to github.com through the proxy
       # curl, not uri/get_url: Python urllib can't negotiate NTLM proxy auth
-      # and sends %40-encoded credentials literally. nodejs.org exercises the
-      # authenticated path — github.com may be allowlisted.
+      # and sends %40-encoded credentials literally. github.com is needed for
+      # the git checkout in both modes; everything else is staged offline.
       ansible.builtin.command:
         cmd: >-
           curl -fsS -o /dev/null --proxy-anyauth --max-time 15
-          https://nodejs.org
+          https://github.com
       register: egress_check
       failed_when: false
       changed_when: false
@@ -47,10 +47,34 @@
     - name: Fail if there is no outbound connectivity
       ansible.builtin.fail:
         msg: >-
-          Cannot reach nodejs.org through the proxy (rc={{ egress_check.rc }}).
+          Cannot reach github.com through the proxy (rc={{ egress_check.rc }}).
           Export the corrected proxy vars first (see deploy/README.md — the @
           in the username must be %-encoded as %40).
       when: egress_check.rc != 0
+
+    - name: Check offline staging bundle contents
+      when: deploy_mode == 'offline'
+      block:
+        - name: Stat staged files
+          ansible.builtin.stat:
+            path: "{{ stage_dir }}/{{ item }}"
+          loop:
+            - dist.tar.gz
+            - ollama-linux-amd64.tgz
+            - wheels
+            - models
+          register: staged
+
+        - name: Fail if the staging bundle is incomplete
+          ansible.builtin.fail:
+            msg: >-
+              Missing {{ stage_dir }}/{{ item.item }} — run deploy/stage.sh on
+              the dev machine, scp documind-stage.tar.gz to the server, and
+              untar it into {{ stage_dir }} first.
+          loop: "{{ staged.results }}"
+          loop_control:
+            label: "{{ item.item }}"
+          when: not item.stat.exists
 
     - name: Enable lingering so user services survive logout/reboot
       ansible.builtin.command: loginctl enable-linger
@@ -67,7 +91,8 @@
       when: linger.rc != 0
 
   roles:
-    - nodejs
+    - role: nodejs
+      when: deploy_mode == 'online'   # offline ships a prebuilt dist.tar.gz
     - ollama
     - documind
 

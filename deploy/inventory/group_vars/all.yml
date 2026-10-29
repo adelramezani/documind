@@ -16,7 +16,14 @@ python_bin: python3          # AlmaLinux 8.10 target already provides 3.11.9
 git_repo: https://github.com/adelramezani/documind.git
 git_ref: main
 
+# online  — download nodejs.org/ollama.com/pypi/npm directly (needs whitelist)
+# offline — consume a bundle produced by deploy/stage.sh on the dev machine
+#           and copied to the server (see deploy/README.md).
+deploy_mode: offline
+stage_dir: "{{ ansible_env.HOME }}/documind-stage"
+
 # Node.js major line installed as a tarball into {{ user_local }}/node.
+# Online mode only — offline builds the frontend on the dev machine.
 nodejs_major: v22
 
 # Egress goes through the corporate proxy. Picked up from the target's

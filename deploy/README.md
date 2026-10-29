@@ -65,17 +65,40 @@ systemd service.
 
 ## Run
 
+### Online mode (`deploy_mode: online`)
+
 ```bash
 cd deploy
-ansible-playbook playbooks/deploy.yml
+ansible-playbook playbooks/deploy.yml -e deploy_mode=online
 # with SSH password instead of a key: add -k
 ```
 
+### Offline mode (`deploy_mode: offline`, default)
+
+For proxy-filtered servers where only github.com is whitelisted. Build the
+bundle on the dev machine (Git Bash), copy it over, then deploy:
+
+```bash
+# dev machine (repo root)
+./deploy/stage.sh
+scp documind-stage.tar.gz documind@ls-dp-integration-test:~/
+
+# server
+mkdir -p ~/documind-stage
+tar -xzf ~/documind-stage.tar.gz -C ~/documind-stage
+cd ~/src/documind/deploy
+ansible-playbook -c local playbooks/deploy.yml
+```
+
+The bundle carries: `dist.tar.gz` (prebuilt frontend — no Node needed on the
+server), `wheels/` (cp311/manylinux builds of `requirements.lock` — pip runs
+`--no-index`), `ollama-linux-amd64.tgz`, and `models/` (the Ollama model
+store copied from the dev machine).
+
 App is then reachable at `http://ls-dp-integration-test:8000`.
 
-Re-running the playbook is idempotent: it pulls `main`, rebuilds the frontend
-only when the checkout changed (or `dist/` is missing), and restarts the user
-services via handlers.
+Re-running the playbook is idempotent: it pulls `main`, rebuilds/reinstalls
+only what changed, and restarts the user services via handlers.
 
 ## Surviving reboot/logout (linger)
 
@@ -106,7 +129,12 @@ journalctl --user -u documind -f
 
 - If the repo is private, embed a token in `git_repo`
   (`https://<token>@github.com/...`) or switch to SSH with a deploy key.
-- `ollama_models` must stay in sync with `backend/app/settings.py` DEFAULTS.
+- `ollama_models` must stay in sync with `backend/app/settings.py` DEFAULTS —
+  and in offline mode, with whatever `stage.sh` copied from the dev machine's
+  `~/.ollama/models`.
+- Offline `pip download` uses `--only-binary=:all:` — if a requirement has no
+  manylinux cp311 wheel, `stage.sh` fails listing it; install gcc on the server
+  or pin an alternative.
 - The Ollama install is pinned to whatever `ollama.com` serves at deploy time
   and is not upgraded on re-runs (`creates:` guard); to upgrade, delete
   `~/.local/bin/ollama` and re-run.
