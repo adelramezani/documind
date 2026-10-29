@@ -1,0 +1,33 @@
+- name: Fetch the Node.js checksum index
+  ansible.builtin.get_url:
+    url: "https://nodejs.org/dist/latest-{{ nodejs_major }}.x/SHASUMS256.txt"
+    dest: /tmp/documind-node-shasums.txt
+    mode: "0644"
+
+- name: Read the checksum index
+  ansible.builtin.slurp:
+    src: /tmp/documind-node-shasums.txt
+  register: node_shasums
+
+- name: Resolve the latest {{ nodejs_major }} archive name and checksum
+  ansible.builtin.set_fact:
+    node_archive: >-
+      {{ node_shasums.content | b64decode
+         | regex_search('node-v[0-9.]+-linux-x64\.tar\.xz') }}
+    node_checksum: >-
+      {{ node_shasums.content | b64decode
+         | regex_search('[0-9a-f]{64}(?=  node-v[0-9.]+-linux-x64\.tar\.xz)') }}
+
+- name: Download Node.js {{ nodejs_major }}
+  ansible.builtin.get_url:
+    url: "https://nodejs.org/dist/latest-{{ nodejs_major }}.x/{{ node_archive }}"
+    dest: "/tmp/{{ node_archive }}"
+    checksum: "sha256:{{ node_checksum }}"
+
+- name: Install Node.js into ~/.local/node
+  ansible.builtin.unarchive:
+    src: "/tmp/{{ node_archive }}"
+    remote_src: true
+    dest: "{{ user_local }}/node"
+    extra_opts: ["--strip-components=1"]
+    creates: "{{ user_local }}/node/bin/npm"

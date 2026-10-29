@@ -1,9 +1,12 @@
 """FastAPI application entrypoint."""
 from __future__ import annotations
 
-from fastapi import FastAPI
+from pathlib import Path
+
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 
 from .api import chat, documents, models
 from .ollama_client import OllamaUnavailable
@@ -33,3 +36,23 @@ app.include_router(models.router)
 @app.get("/api/health")
 def health() -> dict:
     return {"status": "ok"}
+
+
+_DIST = Path(__file__).resolve().parents[2] / "frontend" / "dist"
+
+
+class _SPAStaticFiles(StaticFiles):
+    """Serve the frontend build; unknown paths fall back to index.html."""
+
+    async def get_response(self, path: str, scope):
+        try:
+            return await super().get_response(path, scope)
+        except HTTPException as exc:
+            if exc.status_code != 404:
+                raise
+            return await super().get_response("index.html", scope)
+
+
+# Mounted last so /api routes win; no-op when dist/ is absent (dev mode).
+if _DIST.is_dir():
+    app.mount("/", _SPAStaticFiles(directory=_DIST, html=True))

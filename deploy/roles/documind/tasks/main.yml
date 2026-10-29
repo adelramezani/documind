@@ -1,0 +1,70 @@
+- name: Create application directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: "0755"
+  loop:
+    - "{{ app_dir }}"
+    - "{{ app_dir }}/data"
+    - "{{ ollama_models_dir }}"
+    - "{{ ansible_env.HOME }}/.config/systemd/user"
+
+- name: Checkout the repository
+  ansible.builtin.git:
+    repo: "{{ git_repo }}"
+    dest: "{{ app_dir }}/app"
+    version: "{{ git_ref }}"
+    update: true
+  register: git_checkout
+  notify: Restart documind
+
+- name: Check whether the frontend was already built
+  ansible.builtin.stat:
+    path: "{{ app_dir }}/app/frontend/dist/index.html"
+  register: frontend_dist
+
+- name: Install frontend dependencies
+  ansible.builtin.command:
+    cmd: npm ci
+    chdir: "{{ app_dir }}/app/frontend"
+  environment:
+    PATH: "{{ user_local }}/node/bin:{{ ansible_env.PATH }}"
+  when: git_checkout.changed or not frontend_dist.stat.exists
+
+- name: Build the frontend
+  ansible.builtin.command:
+    cmd: npm run build
+    chdir: "{{ app_dir }}/app/frontend"
+  environment:
+    PATH: "{{ user_local }}/node/bin:{{ ansible_env.PATH }}"
+  when: git_checkout.changed or not frontend_dist.stat.exists
+  notify: Restart documind
+
+- name: Create the Python virtualenv and install locked requirements
+  ansible.builtin.pip:
+    requirements: "{{ app_dir }}/app/backend/requirements.lock"
+    virtualenv: "{{ app_dir }}/venv"
+    virtualenv_command: "{{ python_bin }} -m venv"
+  notify: Restart documind
+
+- name: Write the environment file
+  ansible.builtin.template:
+    src: documind.env.j2
+    dest: "{{ app_dir }}/documind.env"
+    mode: "0640"
+  notify: Restart documind
+
+- name: Install the systemd user unit
+  ansible.builtin.template:
+    src: documind.service.j2
+    dest: "{{ ansible_env.HOME }}/.config/systemd/user/{{ app_name }}.service"
+    mode: "0644"
+  notify: Restart documind
+
+- name: Enable and start the documind user service
+  ansible.builtin.systemd:
+    name: "{{ app_name }}"
+    scope: user
+    state: started
+    enabled: true
+    daemon_reload: true

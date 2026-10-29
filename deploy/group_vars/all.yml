@@ -1,0 +1,27 @@
+# Shared deploy variables — override per-host in inventory or host_vars.
+# Rootless layout: everything lives under ~/.local of the app_user.
+
+app_name: documind
+app_user: documind
+user_local: "{{ ansible_env.HOME }}/.local"
+app_dir: "{{ user_local }}/documind"       # git checkout, venv, env file, data/
+
+app_host: 0.0.0.0    # no reverse proxy — uvicorn serves API + built frontend
+app_port: 8000
+max_upload_mb: 100
+
+python_bin: python3          # AlmaLinux 8.10 target already provides 3.11.9
+
+# Source checkout on the server (HTTPS; add a token in the URL for private repos).
+git_repo: https://github.com/adelramezani/documind.git
+git_ref: main
+
+# Node.js major line installed as a tarball into {{ user_local }}/node.
+nodejs_major: v22
+
+ollama_base_url: "http://127.0.0.1:11434"
+ollama_models_dir: "{{ user_local }}/share/ollama/models"
+# Models pulled on the server. Keep in sync with backend/app/settings.py DEFAULTS.
+ollama_models:
+  - llama3.2:3b
+  - nomic-embed-text

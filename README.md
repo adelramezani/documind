@@ -13,6 +13,7 @@ Private, locally hosted AI knowledge assistant that ingests confidential documen
 | Model management | `backend/app/api/models.py` | Lists installed Ollama models with descriptions/params; confirmed-pull downloads via `/api/models/pull` | 2026-10-28 |
 | Visible RAG settings | `backend/app/settings.py` | Chunking, retrieval, rerank, generation, and model defaults — all viewable/editable in the Settings UI | 2026-10-28 |
 | React UI | `frontend/src/` | Chat view (auto/always/never document mode), Documents, Models, Settings panels | 2026-10-28 |
+| Ansible deployment | `deploy/` | Rootless IaC for ls-dp-integration-test (AlmaLinux 8): everything under `~/.local` — git checkout, venv, systemd --user units, Ollama + Node tarballs; uvicorn serves API + SPA | 2026-10-29 |
 
 Voice input and document translation are planned for a later release.
 

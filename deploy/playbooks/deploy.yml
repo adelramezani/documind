@@ -1,0 +1,60 @@
+- name: Deploy Documind to ls-dp-integration-test
+  hosts: documind_servers
+  # Fully rootless — everything runs as the SSH user under ~/.local.
+  become: false
+
+  pre_tasks:
+    - name: Assert RHEL-family target
+      ansible.builtin.fail:
+        msg: "Target {{ ansible_facts.distribution }} is not RHEL-family — adapt the roles first."
+      when: ansible_facts.os_family != "RedHat"
+
+    - name: Check git is available
+      ansible.builtin.command: git --version
+      register: git_check
+      changed_when: false
+      failed_when: false
+
+    - name: Check Python >= 3.11 with venv support
+      ansible.builtin.command: >-
+        {{ python_bin }} -c "import sys, ensurepip;
+        sys.exit(0 if sys.version_info >= (3, 11) else 1)"
+      register: python_check
+      changed_when: false
+      failed_when: false
+
+    - name: Fail fast on missing prerequisites
+      ansible.builtin.fail:
+        msg: >-
+          Missing prerequisites (need a one-time admin install):
+          {{ 'git ' if git_check.rc != 0 }}{{ 'python3.11+ with ensurepip' if python_check.rc != 0 }}
+      when: git_check.rc != 0 or python_check.rc != 0
+
+    - name: Enable lingering so user services survive logout/reboot
+      ansible.builtin.command: loginctl enable-linger
+      register: linger
+      changed_when: false
+      failed_when: false
+
+    - name: Warn if lingering could not be enabled
+      ansible.builtin.debug:
+        msg: >-
+          loginctl enable-linger failed — user services run only while
+          {{ app_user }} has an active session. Ask an admin to run:
+          sudo loginctl enable-linger {{ app_user }}
+      when: linger.rc != 0
+
+  roles:
+    - nodejs
+    - ollama
+    - documind
+
+  post_tasks:
+    - name: Wait for the backend health endpoint
+      ansible.builtin.uri:
+        url: "http://127.0.0.1:{{ app_port }}/api/health"
+        status_code: 200
+      register: health
+      retries: 10
+      delay: 3
+      until: health.status == 200

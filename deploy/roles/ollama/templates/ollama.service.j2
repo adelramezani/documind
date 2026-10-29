@@ -1,0 +1,12 @@
+[Unit]
+Description=Ollama (user instance)
+After=network.target
+
+[Service]
+Environment=OLLAMA_MODELS={{ ollama_models_dir }}
+ExecStart={{ user_local }}/bin/ollama serve
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=default.target

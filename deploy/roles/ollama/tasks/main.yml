@@ -1,0 +1,41 @@
+- name: Download the Ollama archive
+  ansible.builtin.get_url:
+    url: https://ollama.com/download/ollama-linux-amd64.tgz
+    dest: /tmp/ollama-linux-amd64.tgz
+
+- name: Install Ollama into ~/.local (bin/ollama, lib/ollama)
+  ansible.builtin.unarchive:
+    src: /tmp/ollama-linux-amd64.tgz
+    remote_src: true
+    dest: "{{ user_local }}"
+    creates: "{{ user_local }}/bin/ollama"
+
+- name: Install the Ollama user service
+  ansible.builtin.template:
+    src: ollama.service.j2
+    dest: "{{ ansible_env.HOME }}/.config/systemd/user/ollama.service"
+    mode: "0644"
+  notify: Restart ollama
+
+- name: Enable and start the Ollama user service
+  ansible.builtin.systemd:
+    name: ollama
+    scope: user
+    state: started
+    enabled: true
+    daemon_reload: true
+
+- name: Wait for the Ollama API
+  ansible.builtin.wait_for:
+    host: 127.0.0.1
+    port: 11434
+    timeout: 30
+
+- name: Pull required models
+  ansible.builtin.command: "{{ user_local }}/bin/ollama pull {{ item }}"
+  loop: "{{ ollama_models }}"
+  environment:
+    OLLAMA_HOST: 127.0.0.1:11434
+    OLLAMA_MODELS: "{{ ollama_models_dir }}"
+  register: ollama_pull
+  changed_when: "'success' in ollama_pull.stdout"

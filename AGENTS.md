@@ -50,6 +50,13 @@ A local-first RAG application, Private, locally hosted AI knowledge assistant th
   a long rules list on tiny models.
 - Windows curl cannot read MSYS `/tmp` — use repo-relative paths in tests.
 - jsdom lacks `scrollIntoView` — stubbed in `src/test-setup.ts`.
+- Deployment: Ansible under `deploy/` targets `ls-dp-integration-test`
+  (AlmaLinux 8.10, SSH user `documind`, CPU-only — no vLLM). Fully rootless:
+  everything under `~/.local`, `systemd --user` units (needs linger for
+  reboot persistence), no nginx — uvicorn serves API + SPA via the
+  `_SPAStaticFiles` mount in `backend/app/main.py` on `0.0.0.0:8000`.
+  Control node must be Linux/WSL; server needs git, python3.11+, and
+  egress to github.com, nodejs.org, ollama.com, npm registry.
 
 ## Conventions
 
