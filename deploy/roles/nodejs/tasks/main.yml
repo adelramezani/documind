@@ -1,8 +1,11 @@
+# Downloads use curl, not get_url: Python urllib can't negotiate NTLM proxy
+# auth and sends %40-encoded proxy credentials literally (407s).
 - name: Fetch the Node.js checksum index
-  ansible.builtin.get_url:
-    url: "https://nodejs.org/dist/latest-{{ nodejs_major }}.x/SHASUMS256.txt"
-    dest: /tmp/documind-node-shasums.txt
-    mode: "0644"
+  ansible.builtin.command:
+    cmd: >-
+      curl -fsSL --proxy-anyauth --retry 3 --retry-all-errors --max-time 60
+      -o /tmp/documind-node-shasums.txt
+      https://nodejs.org/dist/latest-{{ nodejs_major }}.x/SHASUMS256.txt
 
 - name: Read the checksum index
   ansible.builtin.slurp:
@@ -19,10 +22,15 @@
          | regex_search('[0-9a-f]{64}(?=  node-v[0-9.]+-linux-x64\.tar\.xz)') }}
 
 - name: Download Node.js {{ nodejs_major }}
-  ansible.builtin.get_url:
-    url: "https://nodejs.org/dist/latest-{{ nodejs_major }}.x/{{ node_archive }}"
-    dest: "/tmp/{{ node_archive }}"
-    checksum: "sha256:{{ node_checksum }}"
+  ansible.builtin.command:
+    cmd: >-
+      curl -fsSL --proxy-anyauth --retry 3 --retry-all-errors --max-time 300
+      -o /tmp/{{ node_archive }}
+      https://nodejs.org/dist/latest-{{ nodejs_major }}.x/{{ node_archive }}
+
+- name: Verify the Node.js archive checksum
+  ansible.builtin.shell:
+    cmd: "echo '{{ node_checksum }}  /tmp/{{ node_archive }}' | sha256sum -c -"
 
 - name: Install Node.js into ~/.local/node
   ansible.builtin.unarchive:

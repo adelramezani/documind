@@ -47,10 +47,21 @@ export http_proxy="$https_proxy"
 ```
 
 Or set `proxy_url` in `group_vars/all.yml` / via `-e proxy_url=...`. The
-play-level `environment:` applies it to git, get_url, npm ci, and ollama
-pull; `no_proxy` keeps 127.0.0.1 local. A pre_task verifies egress and
-fails fast with this hint. Fix `~/.bashrc`/`/etc/environment` permanently
+play-level `environment:` applies it to git, curl, npm ci, and pip;
+`no_proxy` keeps 127.0.0.1 local. A pre_task verifies egress and fails
+fast with this hint. Fix `~/.bashrc`/`/etc/environment` permanently
 so future shells don't hit the malformed value.
+
+**Why downloads use `curl`, not `get_url`/`uri`:** Ansible's urllib-based
+modules only do Basic proxy auth and send `%40`-encoded credentials
+literally — both cause 407s against the corporate (NTLM-capable) proxy.
+curl (`--proxy-anyauth`) decodes `%40` and negotiates whatever scheme the
+proxy offers. git and npm ride on libcurl too, so they are fine. `pip`
+(urllib3) decodes userinfo properly.
+
+The **ollama daemon** pulls models itself, so `ollama.service` carries the
+proxy vars in its unit — the play-level `environment:` never reaches a
+systemd service.
 
 ## Run
 

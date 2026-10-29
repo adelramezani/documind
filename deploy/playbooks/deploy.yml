@@ -33,20 +33,24 @@
       when: git_check.rc != 0 or python_check.rc != 0
 
     - name: Verify egress through the proxy
-      ansible.builtin.uri:
-        url: https://github.com
-        status_code: [200, 301, 302]
-        timeout: 15
+      # curl, not uri/get_url: Python urllib can't negotiate NTLM proxy auth
+      # and sends %40-encoded credentials literally. nodejs.org exercises the
+      # authenticated path — github.com may be allowlisted.
+      ansible.builtin.command:
+        cmd: >-
+          curl -fsS -o /dev/null --proxy-anyauth --max-time 15
+          https://nodejs.org
       register: egress_check
       failed_when: false
+      changed_when: false
 
     - name: Fail if there is no outbound connectivity
       ansible.builtin.fail:
         msg: >-
-          Cannot reach github.com through the proxy. Export the corrected
-          proxy vars first (see deploy/README.md — the @ in the username
-          must be %-encoded as %40).
-      when: egress_check.status not in [200, 301, 302]
+          Cannot reach nodejs.org through the proxy (rc={{ egress_check.rc }}).
+          Export the corrected proxy vars first (see deploy/README.md — the @
+          in the username must be %-encoded as %40).
+      when: egress_check.rc != 0
 
     - name: Enable lingering so user services survive logout/reboot
       ansible.builtin.command: loginctl enable-linger

@@ -4,6 +4,12 @@ After=network.target
 
 [Service]
 Environment=OLLAMA_MODELS={{ ollama_models_dir }}
+{% if proxy_url -%}
+# The daemon — not the CLI — pulls models, so it needs the proxy itself.
+Environment=http_proxy={{ proxy_url }}
+Environment=https_proxy={{ proxy_url }}
+Environment=no_proxy=localhost,127.0.0.1
+{% endif -%}
 ExecStart={{ user_local }}/bin/ollama serve
 Restart=on-failure
 RestartSec=3

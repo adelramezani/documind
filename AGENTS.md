@@ -61,6 +61,10 @@ A local-first RAG application, Private, locally hosted AI knowledge assistant th
   `PROXY`; the server's env vars are malformed
   (@ in username must be %40-encoded, else curl parses port 0).
   Playbook reads proxy from `ansible_env.https_proxy` (var `proxy_url`).
+  Do NOT use `get_url`/`uri` for egress — Python urllib can't do NTLM
+  proxy auth and sends %40 credentials literally (407s); use
+  `command: curl --proxy-anyauth` instead. The ollama *daemon* pulls
+  models, so `ollama.service.j2` carries proxy env itself.
 
 ## Conventions
 

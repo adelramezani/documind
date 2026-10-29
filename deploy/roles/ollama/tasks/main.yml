@@ -1,7 +1,10 @@
+# curl, not get_url — see nodejs role; urllib can't auth to the NTLM proxy.
 - name: Download the Ollama archive
-  ansible.builtin.get_url:
-    url: https://ollama.com/download/ollama-linux-amd64.tgz
-    dest: /tmp/ollama-linux-amd64.tgz
+  ansible.builtin.command:
+    cmd: >-
+      curl -fsSL --proxy-anyauth --retry 3 --retry-all-errors --max-time 600
+      -o /tmp/ollama-linux-amd64.tgz
+      https://ollama.com/download/ollama-linux-amd64.tgz
 
 - name: Install Ollama into ~/.local (bin/ollama, lib/ollama)
   ansible.builtin.unarchive:
