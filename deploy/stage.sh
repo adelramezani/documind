@@ -40,6 +40,10 @@ echo "==> Linux wheels (cp311 / manylinux2014+2_28_x86_64)"
 "$PY" -m pip download uvloop -d "$STAGE/wheels" \
   --platform manylinux2014_x86_64 --platform manylinux_2_28_x86_64 \
   --python-version 3.11 --implementation cp --abi cp311 --only-binary=:all:
+# pysqlite3-binary provides sqlite>=3.35 for Chroma on RHEL 8 (system: 3.26).
+"$PY" -m pip download pysqlite3-binary -d "$STAGE/wheels" \
+  --platform manylinux2014_x86_64 --platform manylinux_2_28_x86_64 \
+  --python-version 3.11 --implementation cp --abi cp311 --only-binary=:all:
 
 echo "==> Ollama binary (GitHub release asset, zst -> tgz recompress)"
 # Releases ship .tar.zst; Alma 8 tar has no zstd rootless — recompress here.

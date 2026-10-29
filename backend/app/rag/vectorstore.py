@@ -6,6 +6,8 @@ different models never mix; reindexing just repopulates the collection.
 from __future__ import annotations
 
 import re
+import sqlite3
+import sys
 from pathlib import Path
 from typing import Any
 
@@ -17,6 +19,11 @@ def collection_name_for(embedding_model: str) -> str:
 
 class VectorStore:
     def __init__(self, persist_dir: Path, embedding_model: str):
+        if sqlite3.sqlite_version_info < (3, 35, 0):
+            # Old system sqlite (e.g. RHEL 8 ships 3.26): Chroma needs >=3.35,
+            # and its pysqlite3 auto-swap only runs inside Colab.
+            __import__("pysqlite3")
+            sys.modules["sqlite3"] = sys.modules.pop("pysqlite3")
         import chromadb
 
         self._client = chromadb.PersistentClient(path=str(persist_dir))
