@@ -28,7 +28,29 @@ Target server — must already have (checked by pre_tasks, fail-fast otherwise):
 
 - `git`
 - `python3` >= 3.11 with `ensurepip` (verified: 3.11.9 on ls-dp-integration-test)
-- Egress to github.com, nodejs.org, ollama.com, and the npm registry
+- Egress to github.com, nodejs.org, ollama.com, and the npm registry —
+  via the corporate proxy (see below)
+
+## Proxy
+
+Outbound traffic on the server goes through `PROXY`
+with authentication. The env vars already on the server are **malformed** —
+the `@` inside the username must be URL-encoded (`%40`), otherwise curl/git
+parse the proxy URL at the wrong `@` and connect to port 0.
+
+Export the corrected vars in the shell before running the playbook (the
+playbook picks them up via `ansible_env`):
+
+```bash
+export https_proxy='http://USER%40DOMAIN:PASS@PROXY'
+export http_proxy="$https_proxy"
+```
+
+Or set `proxy_url` in `group_vars/all.yml` / via `-e proxy_url=...`. The
+play-level `environment:` applies it to git, get_url, npm ci, and ollama
+pull; `no_proxy` keeps 127.0.0.1 local. A pre_task verifies egress and
+fails fast with this hint. Fix `~/.bashrc`/`/etc/environment` permanently
+so future shells don't hit the malformed value.
 
 ## Run
 
@@ -57,8 +79,10 @@ sudo loginctl enable-linger documind
 ## Configuration
 
 - `inventory/hosts.yml` — target host / SSH user
-- `group_vars/all.yml` — `user_local`, `app_dir`, port, `git_ref`,
+- `inventory/group_vars/all.yml` — `user_local`, `app_dir`, port, `git_ref`,
   `ollama_models`, `nodejs_major`
+  (must live next to the inventory file — a top-level `deploy/group_vars/`
+  is silently ignored)
 
 ## Useful commands on the server
 

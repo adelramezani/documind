@@ -55,8 +55,12 @@ A local-first RAG application, Private, locally hosted AI knowledge assistant th
   everything under `~/.local`, `systemd --user` units (needs linger for
   reboot persistence), no nginx — uvicorn serves API + SPA via the
   `_SPAStaticFiles` mount in `backend/app/main.py` on `0.0.0.0:8000`.
-  Control node must be Linux/WSL; server needs git, python3.11+, and
-  egress to github.com, nodejs.org, ollama.com, npm registry.
+  Control node can be the server itself (`ansible-playbook -c local`);
+  server needs git, python3.11+, and egress to github.com, nodejs.org,
+  ollama.com, npm registry — via corporate proxy
+  `PROXY`; the server's env vars are malformed
+  (@ in username must be %40-encoded, else curl parses port 0).
+  Playbook reads proxy from `ansible_env.https_proxy` (var `proxy_url`).
 
 ## Conventions
 

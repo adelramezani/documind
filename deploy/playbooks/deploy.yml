@@ -2,6 +2,8 @@
   hosts: documind_servers
   # Fully rootless — everything runs as the SSH user under ~/.local.
   become: false
+  # Corporate proxy for egress tasks ({} when proxy_url is empty).
+  environment: "{{ proxy_env }}"
 
   pre_tasks:
     - name: Assert RHEL-family target
@@ -29,6 +31,22 @@
           Missing prerequisites (need a one-time admin install):
           {{ 'git ' if git_check.rc != 0 }}{{ 'python3.11+ with ensurepip' if python_check.rc != 0 }}
       when: git_check.rc != 0 or python_check.rc != 0
+
+    - name: Verify egress through the proxy
+      ansible.builtin.uri:
+        url: https://github.com
+        status_code: [200, 301, 302]
+        timeout: 15
+      register: egress_check
+      failed_when: false
+
+    - name: Fail if there is no outbound connectivity
+      ansible.builtin.fail:
+        msg: >-
+          Cannot reach github.com through the proxy. Export the corrected
+          proxy vars first (see deploy/README.md — the @ in the username
+          must be %-encoded as %40).
+      when: egress_check.status not in [200, 301, 302]
 
     - name: Enable lingering so user services survive logout/reboot
       ansible.builtin.command: loginctl enable-linger

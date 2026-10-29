@@ -19,6 +19,17 @@ git_ref: main
 # Node.js major line installed as a tarball into {{ user_local }}/node.
 nodejs_major: v22
 
+# Egress goes through the corporate proxy. Picked up from the target's
+# environment (export the %-encoded URL before running — see deploy/README.md),
+# or set it here / with -e proxy_url=... .
+proxy_url: "{{ ansible_env.https_proxy | default('') }}"
+proxy_env: >-
+  {{ {} if not proxy_url else {
+       'http_proxy': proxy_url,
+       'https_proxy': proxy_url,
+       'no_proxy': 'localhost,127.0.0.1'
+     } }}
+
 ollama_base_url: "http://127.0.0.1:11434"
 ollama_models_dir: "{{ user_local }}/share/ollama/models"
 # Models pulled on the server. Keep in sync with backend/app/settings.py DEFAULTS.
